@@ -1,5 +1,15 @@
 $(function () {
-  initData()
+  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+    chrome.storage.local.get(['MIGRATION_SIMPLE_FLOW'], (res) => {
+      if (res && res.MIGRATION_SIMPLE_FLOW) {
+        console.info('[MIG] pricing_pro_plan disabled by MIGRATION_SIMPLE_FLOW')
+        return
+      }
+      initData()
+    })
+  } else {
+    initData()
+  }
 })
 //获取参数方法
 function getHref() {
