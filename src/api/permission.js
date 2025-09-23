@@ -7,50 +7,37 @@ import {
   CHECKOUT_LOOKUP_URL
 } from '@/service/constants'
 
-async function redeemCode({ code, whatsapp, email }) {
-  const body = { code }
-  if (whatsapp) {
-    body.whatsapp = whatsapp
-  }
-  if (email) {
-    body.email = email
-  }
-  const response = await fetch(REDEEM_URL, {
+// ---- Supabase wrappers (novo fluxo) ----
+export async function redeemCode({ code, whatsapp, email }) {
+  const body = { code: (code ?? '').trim() }
+  if (whatsapp) body.whatsapp = whatsapp
+  if (email) body.email = email
+
+  const r = await fetch(REDEEM_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   })
-  const data = await response.json().catch(() => ({}))
-  return { ok: response.ok, data }
+  const data = await r.json().catch(() => ({}))
+  const ok = r.ok && data?.ok === true
+  return { ok, data, status: r.status }
 }
 
-async function getLicenseStatus({ whatsapp, email }) {
-  const params = new URLSearchParams()
-  if (whatsapp) {
-    params.set('whatsapp', whatsapp)
-  } else if (email) {
-    params.set('email', email)
-  }
-  const response = await fetch(`${LICENSE_STATUS_URL}?${params.toString()}`, {
-    method: 'GET'
-  })
-  const data = await response.json().catch(() => ({}))
-  return { ok: response.ok, data }
+export async function getLicenseStatus({ whatsapp, email }) {
+  const qs = new URLSearchParams(whatsapp ? { whatsapp } : (email ? { email } : {}))
+  const r = await fetch(`${LICENSE_STATUS_URL}?${qs.toString()}`, { method: 'GET' })
+  const data = await r.json().catch(() => ({}))
+  return { ok: r.ok, data, status: r.status }
 }
 
-async function lookupCheckout(session_id) {
-  if (!session_id) {
-    return { ok: false, data: { message: 'session_id required' } }
-  }
-  const response = await fetch(
-    `${CHECKOUT_LOOKUP_URL}?session_id=${encodeURIComponent(session_id)}`,
-    {
-      method: 'GET'
-    }
-  )
-  const data = await response.json().catch(() => ({}))
-  return { ok: response.ok, data }
+export async function lookupCheckout(session_id) {
+  const url = `${CHECKOUT_LOOKUP_URL}?session_id=${encodeURIComponent(session_id)}`
+  const r = await fetch(url, { method: 'GET' })
+  const data = await r.json().catch(() => ({}))
+  return { ok: r.ok, data, status: r.status }
 }
+
+// ---- Legado (mantido para fallback) ----
 
 // 插件共用路径
 // 测试
@@ -65,10 +52,8 @@ async function permissionActiveCodeList(transaction_id) {
   try {
     let responseData = await fetch(WEBSITE_URL + 'permission/active-code-list/', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: { transaction_id: transaction_id }
+      headers: { 'Content-Type': 'application/json' },
+      body: { transaction_id: transaction_id } // legado mantido como estava
     }).then((res) => {
       if (res.status !== 200) {
         dealLog({ eventType: 900014, otherParams: { url: res.url, status: res.status } })
@@ -86,9 +71,7 @@ async function permissionInfo(whatsapp_number, transaction_id) {
     let time = new Date().getTime()
     let responseData = await fetch(WEBSITE_URL + 'permission/info/', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         version: '1.0.1',
         transaction_id: transaction_id,
@@ -111,9 +94,7 @@ async function permissionSync(whatsapp_number) {
   try {
     let responseData = await fetch(WEBSITE_URL + 'permission/sync/', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ version: '1.0.1', whatsapp_number: whatsapp_number })
     }).then((res) => {
       if (res.status !== 200) {
@@ -142,9 +123,7 @@ async function permissionCheck(whatsapp_number, active_code) {
   try {
     let responseData = await fetch(WEBSITE_URL + 'permission/check/', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ active_code: active_code, whatsapp_number: whatsapp_number })
     }).then((res) => {
       if (res.status !== 200) {
@@ -165,9 +144,7 @@ async function getTransactionInfo(transaction_id) {
   try {
     let responseData = await fetch(WEBSITE_URL + 'get-transaction-info', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ transaction_id: transaction_id })
     }).then((res) => {
       if (res.status !== 200) {
@@ -188,9 +165,7 @@ async function cancelTransaction(transaction_id, email) {
   try {
     let responseData = await fetch(WEBSITE_URL + 'transaction/cancel/', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ transaction_id: transaction_id, email: email })
     }).then((res) => {
       if (res.status !== 200) {
@@ -216,9 +191,7 @@ async function getPayUrl(plink_id, whatsapp_number, is_renew) {
   try {
     let responseData = await fetch(WEBSITE_URL + 'transaction/pay-link/', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         plink_id: plink_id,
         whatsapp_number: whatsapp_number,
@@ -243,9 +216,7 @@ async function checkNewUserGuide(params) {
   try {
     let responseData = await fetch(ALL_EXTENSION_URL + 'permission/check-new-user-guide', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...params })
     }).then((res) => {
       if (res.status !== 200) {
@@ -268,6 +239,7 @@ export {
   cancelTransaction,
   getPayUrl,
   checkNewUserGuide,
+  // novos wrappers
   redeemCode,
   getLicenseStatus,
   lookupCheckout
