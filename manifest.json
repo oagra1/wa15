@@ -14,7 +14,9 @@
     "alarms"
   ],
   "host_permissions": [
-    "*://*.whatsapp.com/*"
+    "*://*.whatsapp.com/*",
+    "https://wazapsenderextension.vercel.app/*",
+    "https://wxchpwltgfbpnanpjtwi.supabase.co/*"
   ],
   "optional_host_permissions": [
     "*://*/*"
