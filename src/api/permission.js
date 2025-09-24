@@ -4,7 +4,9 @@ import {
   MIGRATION_SIMPLE_FLOW,
   REDEEM_URL,
   LICENSE_STATUS_URL,
-  CHECKOUT_LOOKUP_URL
+  CHECKOUT_LOOKUP_URL,
+  REDEEM_AUTH_HEADER_KEY,
+  REDEEM_AUTH_HEADER_VALUE
 } from '@/service/constants'
 
 // ---- Supabase wrappers (novo fluxo) ----
@@ -13,9 +15,14 @@ export async function redeemCode({ code, whatsapp, email }) {
   if (whatsapp) body.whatsapp = whatsapp
   if (email) body.email = email
 
+  const headers = { 'Content-Type': 'application/json' }
+  if (REDEEM_AUTH_HEADER_KEY && REDEEM_AUTH_HEADER_VALUE) {
+    headers[REDEEM_AUTH_HEADER_KEY] = REDEEM_AUTH_HEADER_VALUE
+  }
+
   const r = await fetch(REDEEM_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(body)
   })
   const data = await r.json().catch(() => ({}))
@@ -53,7 +60,7 @@ async function permissionActiveCodeList(transaction_id) {
     let responseData = await fetch(WEBSITE_URL + 'permission/active-code-list/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: { transaction_id: transaction_id } // legado mantido como estava
+      body: { transaction_id: transaction_id } // legado mantido
     }).then((res) => {
       if (res.status !== 200) {
         dealLog({ eventType: 900014, otherParams: { url: res.url, status: res.status } })
