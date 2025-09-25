@@ -168,6 +168,7 @@ export default {
           ])
 
           // notificar UI e fechar
+          // fallback para fluxo Supabase: força header/gates a virarem Pro
           this.$emit(
             'changePermissionCode',
             legacyPermission?.plink_id ?? 'supabase_pro',
