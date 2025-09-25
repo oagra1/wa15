@@ -591,6 +591,7 @@ export default {
       permissionCode: '',
       paidMark: false,
       myappActivation: false,
+      myappLicense: null,
       permissionInfo: null,
       isShowUserProfile: false,
 
@@ -616,7 +617,8 @@ export default {
       const paid = this.paidMark === true
       const activated = this.myappActivation === true
       const statusActive = this.permissionInfo && this.permissionInfo.status === 'active'
-      return legacy || paid || activated || statusActive
+      const licenseActive = this.myappLicense && this.myappLicense.status === 'active'
+      return legacy || paid || activated || statusActive || licenseActive
     },
     permissionText() {
       return this.isPro ? 'Pro' : 'Free'
@@ -703,7 +705,8 @@ export default {
         const shouldMarkPro =
           this.paidMark === true ||
           this.myappActivation === true ||
-          (this.permissionInfo && this.permissionInfo.status === 'active')
+          (this.permissionInfo && this.permissionInfo.status === 'active') ||
+          (this.myappLicense && this.myappLicense.status === 'active')
         if (shouldMarkPro && !this.permissionCode) {
           this.permissionCode = 'supabase_pro'
         } else if (!shouldMarkPro && this.permissionCode === 'supabase_pro') {
@@ -1374,6 +1377,30 @@ export default {
     } catch (error) {
       console.error('[MIG] persist MIGRATION flag from popup failed', error)
     }
+    // ===== SUPABASE: reidratar Pro sem depender de plink_id =====
+    const supa =
+      (await new Promise((resolve) => {
+        const storage = chrome?.storage?.local
+        const getter = storage?.get
+        if (typeof getter === 'function') {
+          getter.call(storage, ['myapp_activation', 'myapp_license'], resolve)
+        } else {
+          resolve({})
+        }
+      }).catch(() => ({}))) || {}
+    if (Object.prototype.hasOwnProperty.call(supa, 'myapp_activation')) {
+      this.myappActivation = supa.myapp_activation === true
+    }
+    if (Object.prototype.hasOwnProperty.call(supa, 'myapp_license')) {
+      this.myappLicense = supa.myapp_license || null
+    }
+    const supaActive =
+      supa?.myapp_activation === true ||
+      (supa?.myapp_license && supa.myapp_license.status === 'active')
+    if (supaActive) {
+      // Força o header/gates a lerem Pro imediatamente
+      this.permissionCode = 'supabase_pro'
+    }
     let jsPath = '/js/inject/obfuscate.js'
     let temp = document.createElement('script')
     temp.setAttribute('type', 'text/javascript')
@@ -1387,15 +1414,24 @@ export default {
     let _This = this
     await new Promise((resolve) => {
       chrome.storage.local.get(
-        ['BulkSender_isGuide', 'BulkSender_btnMsg', 'permissionInfo', 'paid_mark', 'myapp_activation'],
+        [
+          'BulkSender_isGuide',
+          'BulkSender_btnMsg',
+          'permissionInfo',
+          'paid_mark',
+          'myapp_activation',
+          'myapp_license'
+        ],
         function (res) {
           _This.paidMark = !!res.paid_mark
           _This.myappActivation = !!res.myapp_activation
+          _This.myappLicense = res.myapp_license || null
           _This.permissionInfo = res.permissionInfo || null
           const shouldMarkPro =
             _This.paidMark === true ||
             _This.myappActivation === true ||
-            (_This.permissionInfo && _This.permissionInfo.status === 'active')
+            (_This.permissionInfo && _This.permissionInfo.status === 'active') ||
+            (_This.myappLicense && _This.myappLicense.status === 'active')
           if (!_This.permissionCode && shouldMarkPro) {
             _This.permissionCode = 'supabase_pro'
           } else if (!shouldMarkPro && _This.permissionCode === 'supabase_pro') {
@@ -1713,7 +1749,7 @@ export default {
   },
   beforeDestroy() {
     if (this._storageChangeHandler) {
-      chrome.storage.onChanged.removeListener(this._storageChangeHandler)
+      chrome?.storage?.onChanged?.removeListener?.(this._storageChangeHandler)
     }
   },
   async mounted() {
@@ -1721,31 +1757,49 @@ export default {
     this._storageChangeHandler = (changes, area) => {
       if (area !== 'local') return
       let touched = false
-      if (changes.paid_mark) {
+      if (Object.prototype.hasOwnProperty.call(changes, 'paid_mark')) {
         this.paidMark = !!changes.paid_mark.newValue
         touched = true
       }
-      if (changes.myapp_activation) {
-        this.myappActivation = !!changes.myapp_activation.newValue
+      const actChanged = Object.prototype.hasOwnProperty.call(changes, 'myapp_activation')
+      const licChanged = Object.prototype.hasOwnProperty.call(changes, 'myapp_license')
+      if (actChanged) {
+        this.myappActivation = changes.myapp_activation?.newValue === true
         touched = true
       }
-      if (changes.permissionInfo) {
+      if (licChanged) {
+        this.myappLicense = changes.myapp_license?.newValue || null
+        touched = true
+      }
+      if (Object.prototype.hasOwnProperty.call(changes, 'permissionInfo')) {
         this.permissionInfo = changes.permissionInfo.newValue || null
         touched = true
       }
-      if (touched) {
-        const shouldMarkPro =
-          this.paidMark === true ||
-          this.myappActivation === true ||
-          (this.permissionInfo && this.permissionInfo.status === 'active')
-        if (!this.permissionCode && shouldMarkPro) {
-          this.permissionCode = 'supabase_pro'
-        } else if (!shouldMarkPro && this.permissionCode === 'supabase_pro') {
-          this.permissionCode = ''
-        }
+      if (!touched) return
+      const actVal = actChanged ? changes.myapp_activation?.newValue : undefined
+      const licVal = licChanged ? changes.myapp_license?.newValue : undefined
+      const active =
+        actVal === true ||
+        (licVal && licVal.status === 'active') ||
+        (this.$data &&
+          (this.$data.myappActivation === true ||
+            (this.$data.myappLicense && this.$data.myappLicense.status === 'active')))
+      if (active) {
+        this.permissionCode = 'supabase_pro'
+        return
+      }
+      const shouldMarkPro =
+        this.paidMark === true ||
+        this.myappActivation === true ||
+        (this.permissionInfo && this.permissionInfo.status === 'active') ||
+        (this.myappLicense && this.myappLicense.status === 'active')
+      if (!this.permissionCode && shouldMarkPro) {
+        this.permissionCode = 'supabase_pro'
+      } else if (!shouldMarkPro && this.permissionCode === 'supabase_pro') {
+        this.permissionCode = ''
       }
     }
-    chrome.storage.onChanged.addListener(this._storageChangeHandler)
+    chrome?.storage?.onChanged?.addListener?.(this._storageChangeHandler)
     this.$bridge.onMessage(CONTENT_TO_POP_IS_SHOW_NO_ACTIVE, ({ data }) => {
       _This.isShowNoActive = true
     })
