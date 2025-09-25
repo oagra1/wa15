@@ -67,9 +67,7 @@ import { createNewWindowPage } from '@/utils/chrome-command-util'
 import {
   MIGRATION_SIMPLE_FLOW,
   STORAGE_LICENSE_KEY,
-  STORAGE_ACTIVATION_FLAG,
-  REDEEM_SEND_NORMALIZED,
-  REDEEM_TRY_BOTH
+  STORAGE_ACTIVATION_FLAG
 } from '@/service/constants'
 
 export default {
@@ -102,21 +100,23 @@ export default {
         return
       }
 
+      // ===== Fluxo Supabase (migração) =====
       if (MIGRATION_SIMPLE_FLOW) {
         try {
+          // Identificadores opcionais (não bloqueiam)
           const { userPhoneNum, userEmail } =
             (await new Promise((resolve) => {
               chrome.storage?.local?.get?.(['userPhoneNum', 'userEmail'], resolve)
             }).catch(() => ({}))) || {}
 
-          const normalized = original.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
-          const tryOrder = REDEEM_TRY_BOTH
-            ? Array.from(new Set([original, normalized]))
-            : (REDEEM_SEND_NORMALIZED ? [normalized] : [original])
+          // Tentamos original e, se falhar, sem hífens
+          const candidates = Array.from(new Set([original, original.replace(/-/g, '')]))
 
           let ok = false
-          let data = {}
-          for (const candidate of tryOrder) {
+          let data = null
+          let status = 0
+
+          for (const candidate of candidates) {
             if (!candidate) continue
             const resp = await redeemCode({
               code: candidate,
@@ -125,11 +125,15 @@ export default {
             })
             ok = resp.ok
             data = resp.data
+            status = resp.status
             if (ok) break
           }
 
           if (!ok) {
-            const message = data?.message || 'Falha ao ativar'
+            const message =
+              data?.message ||
+              data?.error ||
+              (status === 409 ? 'Código inválido ou já usado' : 'Falha ao ativar')
             this.languageVal = message
             this.$message?.error?.(message)
             this.$sendLog?.(908306, { s_message: 'activation_failed_supabase' })

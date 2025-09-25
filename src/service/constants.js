@@ -32,6 +32,7 @@ export const CONTENT_TO_POP_IS_SHOW_NO_SUBSCRIPTION = 'content=>pop:isShowNoSubs
 export const CONTENT_TO_POP_IS_ONE_NO_SUBSCRIPTION = 'content=>pop:isOneNoSubscription'
 export const CONTENT_TO_POP_SHOW_SAVE_TIME_DIALOG = 'content=>pop:showSaveTimeDialog'
 export const CONTENT_TO_POP_GET_PRO_PERMISSION = 'content=>pop:getProPermission'
+
 export const POP_TO_BACKGROUND_GET_PERMISSION = 'POP_TO_BACKGROUND_GET_PERMISSION'
 export const POP_TO_BACKGROUND_GET_CUSTOMERSERVICE = 'POP_TO_BACKGROUND_GET_CUSTOMERSERVICE'
 
@@ -40,6 +41,7 @@ export const POP_TO_BACKGROUND_GET_CUSTOMERSERVICE = 'POP_TO_BACKGROUND_GET_CUST
  */
 export const PAY_HTML_FILE_PATH_URL = 'pay/pricing_pro_plan.html'
 export const EXCEL_TEMPLATE_FILE_PATH_URL = 'assets/WAPlusSenderTemplate1.xlsx'
+
 export const BULK_SENDER_COMPLETED_COMMENT_URL =
   'https://scrm-global.zingfront.com/sender/bulk_sender/completedCommentGuide.json'
 

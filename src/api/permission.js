@@ -12,7 +12,8 @@ import {
 // ---- Supabase wrappers (novo fluxo) ----
 export async function redeemCode({ code, whatsapp, email }) {
   const body = { code: (code ?? '').trim() }
-  if (whatsapp) body.whatsapp = whatsapp
+  // o backend espera "whatsapp_number"
+  if (whatsapp) body.whatsapp_number = whatsapp
   if (email) body.email = email
 
   const headers = { 'Content-Type': 'application/json' }
@@ -123,7 +124,7 @@ async function permissionCheck(whatsapp_number, active_code) {
     }
     return {
       code: data?.code ?? 0,
-      message: data?.message || 'Activation failed',
+      message: data?.message || data?.error || 'Activation failed',
       data
     }
   }
