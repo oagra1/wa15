@@ -589,6 +589,9 @@ export default {
       isShowActiveCode: false,
       isShowPayPermissionPopup: false,
       permissionCode: '',
+      paidMark: false,
+      myappActivation: false,
+      permissionInfo: null,
       isShowUserProfile: false,
 
       // 是否展示用户建议
@@ -608,12 +611,15 @@ export default {
     }
   },
   computed: {
+    isPro() {
+      const legacy = !!this.permissionCode
+      const paid = this.paidMark === true
+      const activated = this.myappActivation === true
+      const statusActive = this.permissionInfo && this.permissionInfo.status === 'active'
+      return legacy || paid || activated || statusActive
+    },
     permissionText() {
-      if (this.permissionCode) {
-        return 'Pro'
-      } else {
-        return 'Free'
-      }
+      return this.isPro ? 'Pro' : 'Free'
     },
     pauseAndSendBtn() {
       return {
@@ -691,7 +697,19 @@ export default {
       this.isShowSuggestion = false
     },
     async changePermissionCode(permissionCode, transaction_id, whatsappNumber) {
-      this.permissionCode = permissionCode
+      if (permissionCode) {
+        this.permissionCode = permissionCode
+      } else {
+        const shouldMarkPro =
+          this.paidMark === true ||
+          this.myappActivation === true ||
+          (this.permissionInfo && this.permissionInfo.status === 'active')
+        if (shouldMarkPro && !this.permissionCode) {
+          this.permissionCode = 'supabase_pro'
+        } else if (!shouldMarkPro && this.permissionCode === 'supabase_pro') {
+          this.permissionCode = ''
+        }
+      }
       const tab = await chrome.tabs.query({
         active: true,
         currentWindow: true
@@ -1369,16 +1387,28 @@ export default {
     let _This = this
     await new Promise((resolve) => {
       chrome.storage.local.get(
-        ['BulkSender_isGuide', 'BulkSender_btnMsg', 'permissionInfo'],
+        ['BulkSender_isGuide', 'BulkSender_btnMsg', 'permissionInfo', 'paid_mark', 'myapp_activation'],
         function (res) {
+          _This.paidMark = !!res.paid_mark
+          _This.myappActivation = !!res.myapp_activation
+          _This.permissionInfo = res.permissionInfo || null
+          const shouldMarkPro =
+            _This.paidMark === true ||
+            _This.myappActivation === true ||
+            (_This.permissionInfo && _This.permissionInfo.status === 'active')
+          if (!_This.permissionCode && shouldMarkPro) {
+            _This.permissionCode = 'supabase_pro'
+          } else if (!shouldMarkPro && _This.permissionCode === 'supabase_pro') {
+            _This.permissionCode = ''
+          }
           // 获取权限信息
-          if (res.permissionInfo && 'transaction_id' in res.permissionInfo) {
+          if (_This.permissionInfo && 'transaction_id' in _This.permissionInfo) {
             const currentTimestamp = parseInt(new Date().setDate(new Date().getDate() - 1) / 1000)
             if (
-              currentTimestamp < res.permissionInfo['expiration_time'] &&
-              res.permissionInfo['pay_status'] !== 1
+              currentTimestamp < _This.permissionInfo['expiration_time'] &&
+              _This.permissionInfo['pay_status'] !== 1
             ) {
-              _This.permissionCode = res.permissionInfo['plink_id']
+              _This.permissionCode = _This.permissionInfo['plink_id']
             }
           }
           if (res.BulkSender_isGuide === false) {
@@ -1681,8 +1711,41 @@ export default {
       immediate: true
     }
   },
+  beforeDestroy() {
+    if (this._storageChangeHandler) {
+      chrome.storage.onChanged.removeListener(this._storageChangeHandler)
+    }
+  },
   async mounted() {
     let _This = this
+    this._storageChangeHandler = (changes, area) => {
+      if (area !== 'local') return
+      let touched = false
+      if (changes.paid_mark) {
+        this.paidMark = !!changes.paid_mark.newValue
+        touched = true
+      }
+      if (changes.myapp_activation) {
+        this.myappActivation = !!changes.myapp_activation.newValue
+        touched = true
+      }
+      if (changes.permissionInfo) {
+        this.permissionInfo = changes.permissionInfo.newValue || null
+        touched = true
+      }
+      if (touched) {
+        const shouldMarkPro =
+          this.paidMark === true ||
+          this.myappActivation === true ||
+          (this.permissionInfo && this.permissionInfo.status === 'active')
+        if (!this.permissionCode && shouldMarkPro) {
+          this.permissionCode = 'supabase_pro'
+        } else if (!shouldMarkPro && this.permissionCode === 'supabase_pro') {
+          this.permissionCode = ''
+        }
+      }
+    }
+    chrome.storage.onChanged.addListener(this._storageChangeHandler)
     this.$bridge.onMessage(CONTENT_TO_POP_IS_SHOW_NO_ACTIVE, ({ data }) => {
       _This.isShowNoActive = true
     })

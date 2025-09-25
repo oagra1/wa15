@@ -170,7 +170,7 @@ export default {
           // notificar UI e fechar
           this.$emit(
             'changePermissionCode',
-            legacyPermission?.plink_id ?? null,
+            legacyPermission?.plink_id ?? 'supabase_pro',
             legacyPermission?.transaction_id ?? null,
             whatsappNumber
           )
