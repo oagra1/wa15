@@ -6,7 +6,9 @@ import {
   LICENSE_STATUS_URL,
   CHECKOUT_LOOKUP_URL,
   REDEEM_AUTH_HEADER_KEY,
-  REDEEM_AUTH_HEADER_VALUE
+  REDEEM_AUTH_HEADER_VALUE,
+  REDEEM_AUTH_HEADER_2_KEY,
+  REDEEM_AUTH_HEADER_2_VALUE
 } from '@/service/constants'
 
 // ---- Supabase wrappers (novo fluxo) ----
@@ -19,6 +21,9 @@ export async function redeemCode({ code, whatsapp, email }) {
   const headers = { 'Content-Type': 'application/json' }
   if (REDEEM_AUTH_HEADER_KEY && REDEEM_AUTH_HEADER_VALUE) {
     headers[REDEEM_AUTH_HEADER_KEY] = REDEEM_AUTH_HEADER_VALUE
+  }
+  if (REDEEM_AUTH_HEADER_2_KEY && REDEEM_AUTH_HEADER_2_VALUE) {
+    headers[REDEEM_AUTH_HEADER_2_KEY] = REDEEM_AUTH_HEADER_2_VALUE
   }
 
   const r = await fetch(REDEEM_URL, {
