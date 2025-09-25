@@ -63,5 +63,9 @@ export const REDEEM_TRY_BOTH = true        // tentar original e, se falhar, norm
 
 // ===== Auth opcional para Edge Function (deixe vazio se público) =====
 // Ex.: 'Authorization' / 'apikey'
-export const REDEEM_AUTH_HEADER_KEY = ''
-export const REDEEM_AUTH_HEADER_VALUE = ''
+export const REDEEM_AUTH_HEADER_KEY = 'Authorization'   // ou '' para desativado
+export const REDEEM_AUTH_HEADER_VALUE = ''                 // ex.: 'Bearer <SUPABASE_ANON_KEY>'
+
+// (opcional) segundo header, se o gateway exigir 'apikey'
+export const REDEEM_AUTH_HEADER_2_KEY = 'apikey'         // ou ''
+export const REDEEM_AUTH_HEADER_2_VALUE = ''             // ou ''
