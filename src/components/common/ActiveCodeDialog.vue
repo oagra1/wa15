@@ -140,14 +140,42 @@ export default {
             return
           }
 
+          // ===== Bridge de compat p/ UI antiga: garantir "Pro" imediato =====
+          const legacyPermission =
+            data?.permissionInfo || {
+              status: 'active',
+              source: 'supabase',
+              transaction_id: data?.transaction_id ?? null,
+              plink_id: data?.plink_id ?? null,
+              activated_at: Date.now()
+            }
+
+          const whatsappNumber = (userPhoneNum || '').replace?.(/\D/g, '') || null
+
           await chrome.storage?.local?.set?.({
-            [STORAGE_LICENSE_KEY]: data,
-            [STORAGE_ACTIVATION_FLAG]: true,
-            paid_mark: true
+            [STORAGE_LICENSE_KEY]: data, // ex.: myapp_license
+            [STORAGE_ACTIVATION_FLAG]: true, // ex.: myapp_activation
+            paid_mark: true, // flag lida pelo header para exibir "Pro"
+            permissionInfo: legacyPermission // objeto mínimo p/ telas legadas
           })
 
+          // limpar bandeiras de "sem assinatura"
+          chrome.storage?.local?.remove?.([
+            'isShowNoSubscription',
+            'isOneNoSubscription',
+            'isShowNoActive',
+            'actionCodeList'
+          ])
+
+          // notificar UI e fechar
+          this.$emit(
+            'changePermissionCode',
+            legacyPermission?.plink_id ?? null,
+            legacyPermission?.transaction_id ?? null,
+            whatsappNumber
+          )
+
           this.languageVal = ''
-          this.$emit('changePermissionCode')
           this.$message?.success?.('Ativado')
           this.closeActiveCodePopup()
           return
