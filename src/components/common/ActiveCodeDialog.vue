@@ -141,22 +141,33 @@ export default {
           }
 
           // ===== Bridge de compat p/ UI antiga: garantir "Pro" imediato =====
-          const legacyPermission =
-            data?.permissionInfo || {
-              status: 'active',
+          const legacyPermission = {
+            ...(data?.permissionInfo || {
               source: 'supabase',
               transaction_id: data?.transaction_id ?? null,
               plink_id: data?.plink_id ?? null,
               activated_at: Date.now()
-            }
+            }),
+            status: 'active'
+          }
 
           const whatsappNumber = (userPhoneNum || '').replace?.(/\D/g, '') || null
 
+          const licensePayload = {
+            ...data,
+            status: 'active'
+          }
+
           await chrome.storage?.local?.set?.({
-            [STORAGE_LICENSE_KEY]: data, // ex.: myapp_license
+            [STORAGE_LICENSE_KEY]: licensePayload, // ex.: myapp_license
             [STORAGE_ACTIVATION_FLAG]: true, // ex.: myapp_activation
             paid_mark: true, // flag lida pelo header para exibir "Pro"
             permissionInfo: legacyPermission // objeto mínimo p/ telas legadas
+          })
+          console.log('[SUPA][diag] redeem → payload salvo', {
+            saved: licensePayload,
+            myapp_activation: true,
+            paid_mark: true
           })
 
           // limpar bandeiras de "sem assinatura"
@@ -169,12 +180,16 @@ export default {
 
           // notificar UI e fechar
           // fallback para fluxo Supabase: força header/gates a virarem Pro
-          this.$emit(
-            'changePermissionCode',
-            legacyPermission?.plink_id ?? 'supabase_pro',
-            legacyPermission?.transaction_id ?? null,
+          console.log('[SUPA][diag] redeem ok → flip to Pro', { license: licensePayload })
+          const emittedCode = legacyPermission?.plink_id ?? 'supabase_pro'
+          const emittedTxn = legacyPermission?.transaction_id ?? null
+          console.log('[SUPA][diag] emit changePermissionCode', {
+            emittedCode,
+            transaction_id: emittedTxn,
             whatsappNumber
-          )
+          })
+          this.$emit('changePermissionCode', emittedCode, emittedTxn, whatsappNumber)
+          console.log('[SUPA][diag] changePermissionCode dispatched')
 
           this.languageVal = ''
           this.$message?.success?.('Ativado')

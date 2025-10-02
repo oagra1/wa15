@@ -141,7 +141,13 @@ export default {
       this.loading = true
       if (MIGRATION_SIMPLE_FLOW) {
         try {
-          const storageKeys = [STORAGE_LICENSE_KEY, 'userPhoneNum', 'userEmail']
+          const storageKeys = [
+            STORAGE_LICENSE_KEY,
+            'userPhoneNum',
+            'userEmail',
+            'paid_mark',
+            'myapp_activation'
+          ]
           const storageData =
             (await new Promise((resolve) => {
               const storage = chrome?.storage?.local
@@ -154,6 +160,8 @@ export default {
             }).catch(() => ({}))) || {}
           const storedLicense =
             storageData?.[STORAGE_LICENSE_KEY] ?? storageData?.myapp_license ?? null
+          const paidMark = storageData?.paid_mark === true
+          const activationFlag = storageData?.myapp_activation === true
           const whatsapp =
             typeof storageData.userPhoneNum === 'string'
               ? storageData.userPhoneNum.replace(/\D/g, '')
@@ -163,7 +171,11 @@ export default {
               ? storageData.userEmail
               : undefined
           let licensePayload = storedLicense
-          if (LICENSE_STATUS_URL && (whatsapp || email)) {
+          const needsRemote =
+            !licensePayload ||
+            !licensePayload.status ||
+            (typeof licensePayload.plan !== 'string' || !licensePayload.plan.trim())
+          if (needsRemote && LICENSE_STATUS_URL && (whatsapp || email)) {
             try {
               const { ok, data } = await getLicenseStatus({ whatsapp, email })
               if (ok && data) {
@@ -173,6 +185,13 @@ export default {
               console.error('[MIG] license-status failed', error)
             }
           }
+          if (!licensePayload && (paidMark || activationFlag)) {
+            licensePayload = { status: 'active', plan: 'Supabase License' }
+          }
+          if (licensePayload && typeof licensePayload.status === 'string') {
+            licensePayload = { ...licensePayload, status: licensePayload.status.toLowerCase() }
+          }
+          console.log('[SUPA][diag] UserProfile license payload', licensePayload)
           this.populateFromLicense(licensePayload)
         } finally {
           this.loading = false
@@ -216,27 +235,84 @@ export default {
       })
     },
     populateFromLicense(license) {
-      const status = license?.status ?? '-'
-      const plan = license?.plan ?? status
-      this.currentPlan = plan || '-'
+      const missing = [
+        'status',
+        'plan',
+        'issued_at',
+        'activated_at',
+        'created_at',
+        'expires_at',
+        'expiration',
+        'next_payment_at'
+      ].filter((key) => {
+        const value = license?.[key]
+        return value === undefined || value === null || value === '-'
+      })
+      console.log('[SUPA][diag] UserProfile populateFromLicense', { license, missing })
+      if (!license) {
+        this.currentPlan = '-'
+        this.joinedDate = '-'
+        this.servicePeriod = '-'
+        this.upcomingPayments = '-'
+        this.subscriptState = '-'
+        this.transactionId = ''
+        this.showCancel = false
+        this.showTrialTip = false
+        this.isInputEmail = false
+        this.email = ''
+        console.log('[SUPA][diag] UserProfile populated', {
+          currentPlan: this.currentPlan,
+          joinedDate: this.joinedDate,
+          servicePeriod: this.servicePeriod,
+          upcomingPayments: this.upcomingPayments,
+          subscriptState: this.subscriptState
+        })
+        return
+      }
+      const rawStatus = Object.prototype.hasOwnProperty.call(license, 'status')
+        ? license.status
+        : ''
+      const statusValue =
+        typeof rawStatus === 'string'
+          ? rawStatus.toLowerCase()
+          : String(rawStatus ?? '').toLowerCase()
+      const isActive = statusValue === 'active'
+      const displayStatus = isActive
+        ? 'Active'
+        : statusValue
+        ? statusValue.charAt(0).toUpperCase() + statusValue.slice(1)
+        : '-'
+      const planNameRaw =
+        typeof license.plan === 'string' ? license.plan.trim() : license.plan
+      this.currentPlan = planNameRaw || (isActive ? 'Supabase License' : '-')
       const joined = this.formatLicenseDate(
         license?.issued_at || license?.activated_at || license?.created_at
       )
-      const expires = this.formatLicenseDate(
-        license?.expires_at || license?.expiration || license?.expired_at
-      )
+      const expiresRaw = license?.expires_at || license?.expiration || license?.expired_at
+      const expiresFormatted = this.formatLicenseDate(expiresRaw)
       const nextPayment = this.formatLicenseDate(
         license?.next_payment_at || license?.upcoming_payments
       )
       this.joinedDate = joined
-      this.servicePeriod = joined !== '-' || expires !== '-' ? `${joined} / ${expires}` : '-'
+      if (expiresRaw && expiresFormatted !== '-') {
+        this.servicePeriod = `Até ${expiresFormatted}`
+      } else {
+        this.servicePeriod = '-'
+      }
       this.upcomingPayments = nextPayment
-      this.subscriptState = status || '-'
+      this.subscriptState = displayStatus
       this.showCancel = false
       this.showTrialTip = false
       this.transactionId = license?.transaction_id || ''
       this.isInputEmail = false
       this.email = ''
+      console.log('[SUPA][diag] UserProfile populated', {
+        currentPlan: this.currentPlan,
+        joinedDate: this.joinedDate,
+        servicePeriod: this.servicePeriod,
+        upcomingPayments: this.upcomingPayments,
+        subscriptState: this.subscriptState
+      })
     },
     formatLicenseDate(value) {
       if (value === null || value === undefined || value === '') {
