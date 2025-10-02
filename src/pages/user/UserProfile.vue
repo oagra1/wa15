@@ -191,6 +191,7 @@ export default {
           if (licensePayload && typeof licensePayload.status === 'string') {
             licensePayload = { ...licensePayload, status: licensePayload.status.toLowerCase() }
           }
+          console.log('[SUPA][diag] UserProfile license payload', licensePayload)
           this.populateFromLicense(licensePayload)
         } finally {
           this.loading = false
@@ -234,6 +235,21 @@ export default {
       })
     },
     populateFromLicense(license) {
+      const missing = [
+        'status',
+        'plan',
+        'issued_at',
+        'activated_at',
+        'created_at',
+        'expires_at',
+        'expiration',
+        'next_payment_at'
+      ].filter((key) => {
+        const value = license?.[key]
+        return value === undefined || value === null || value === '-'
+      })
+      console.log('[SUPA][diag] UserProfile populateFromLicense', { license, missing })
+
       if (!license) {
         this.currentPlan = '-'
         this.joinedDate = '-'
@@ -245,6 +261,13 @@ export default {
         this.showTrialTip = false
         this.isInputEmail = false
         this.email = ''
+        console.log('[SUPA][diag] UserProfile populated', {
+          currentPlan: this.currentPlan,
+          joinedDate: this.joinedDate,
+          servicePeriod: this.servicePeriod,
+          upcomingPayments: this.upcomingPayments,
+          subscriptState: this.subscriptState
+        })
         return
       }
       const rawStatus = Object.prototype.hasOwnProperty.call(license, 'status')
@@ -284,6 +307,13 @@ export default {
       this.transactionId = license?.transaction_id || ''
       this.isInputEmail = false
       this.email = ''
+      console.log('[SUPA][diag] UserProfile populated', {
+        currentPlan: this.currentPlan,
+        joinedDate: this.joinedDate,
+        servicePeriod: this.servicePeriod,
+        upcomingPayments: this.upcomingPayments,
+        subscriptState: this.subscriptState
+      })
     },
     formatLicenseDate(value) {
       if (value === null || value === undefined || value === '') {
@@ -335,56 +365,15 @@ export default {
 </script>
 
 <style scoped>
-.dialogBody {
-  width: 100%;
-}
-
-.dialogBody tr {
-  width: 100%;
-  line-height: 20px;
-}
-
-table {
-  width: 100%;
-}
-
-.el-dialog.el-dialog--center.userProfile > .el-dialog__footer {
-  margin: 6px auto 17px;
-  padding-top: 0 !important;
-}
-
-.tableHead {
-  font-weight: bold;
-  width: 40%;
-}
-
-.tableContent {
-  width: 60%;
-  font-size: 12px;
-}
-.tableContent >>> .el-input > input {
-  height: 20px;
-}
-
-::v-deep .el-dialog__header {
-  background-color: #37b64a;
-  font-size: 20px;
-  font-weight: bold;
-}
-
-.el-button--info,
-.el-button--info:hover {
-  padding: 3px 6px !important;
-  border-radius: 4px;
-  text-align: center;
-  align-items: center;
-  justify-content: center;
-}
-
-.subscriptState {
-  margin-right: 20px;
-}
-.el-input {
-  width: 70%;
-}
+.dialogBody { width: 100%; }
+.dialogBody tr { width: 100%; line-height: 20px; }
+table { width: 100%; }
+.el-dialog.el-dialog--center.userProfile > .el-dialog__footer { margin: 6px auto 17px; padding-top: 0 !important; }
+.tableHead { font-weight: bold; width: 40%; }
+.tableContent { width: 60%; font-size: 12px; }
+.tableContent >>> .el-input > input { height: 20px; }
+::v-deep .el-dialog__header { background-color: #37b64a; font-size: 20px; font-weight: bold; }
+.el-button--info, .el-button--info:hover { padding: 3px 6px !important; border-radius: 4px; text-align: center; align-items: center; justify-content: center; }
+.subscriptState { margin-right: 20px; }
+.el-input { width: 70%; }
 </style>

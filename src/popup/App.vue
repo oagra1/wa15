@@ -620,7 +620,16 @@ export default {
         this.myappLicense,
         this.permissionInfo
       )
-      return legacy || supabaseActive
+      const verdict = legacy || supabaseActive
+      console.log('[SUPA][diag] isPro evaluation', {
+        permissionCode: this.permissionCode,
+        paid_mark: this.paidMark,
+        myapp_activation: this.myappActivation,
+        myapp_license_status: this.myappLicense?.status,
+        permissionInfo_status: this.permissionInfo?.status,
+        verdict
+      })
+      return verdict
     },
     permissionText() {
       return this.isPro ? 'Pro' : 'Free'
@@ -672,12 +681,20 @@ export default {
         typeof permissionStatusRaw === 'string'
           ? permissionStatusRaw.toLowerCase()
           : String(permissionStatusRaw ?? '').toLowerCase()
-      return (
+      const result = legacy || supabaseActive
+      return result
         paidMark === true ||
         myappActivation === true ||
         licenseStatus === 'active' ||
         permissionStatus === 'active'
-      )
+      console.log('[SUPA][diag] isSupabaseActive helper', {
+        paidMark,
+        myappActivation,
+        licenseStatus,
+        permissionStatus,
+        result
+      })
+      return result
     },
     normalizeStatusObject(value) {
       if (!value || typeof value !== 'object') {
@@ -742,6 +759,15 @@ export default {
       this.isShowSuggestion = false
     },
     async changePermissionCode(permissionCode, transaction_id, whatsappNumber) {
+      console.log('[SUPA][diag] changePermissionCode → input', {
+        incomingCode: permissionCode,
+        transaction_id,
+        whatsappNumber,
+        paid_mark: this.paidMark,
+        myapp_activation: this.myappActivation,
+        permissionInfo_status: this.permissionInfo?.status,
+        license_status: this.myappLicense?.status
+      })
       if (permissionCode) {
         this.permissionCode = permissionCode
       } else if (
@@ -756,6 +782,10 @@ export default {
       } else {
         this.permissionCode = ''
       }
+      console.log('[SUPA][diag] changePermissionCode → output', {
+        permissionCode: this.permissionCode,
+        permissionText: this.permissionText
+      })
       const tab = await chrome.tabs.query({
         active: true,
         currentWindow: true
@@ -1480,6 +1510,14 @@ export default {
             _This.myappLicense,
             _This.permissionInfo
           )
+      console.log('[SUPA][diag] bootstrap snapshot', {
+        paid_mark: this.paidMark,
+        myapp_activation: this.myappActivation,
+        myapp_license: this.myappLicense,
+        permissionInfo: this.permissionInfo,
+        permissionCode: this.permissionCode,
+        permissionText: this.permissionText
+      })
           if (supabaseActive) {
             _This.permissionCode = 'supabase_pro'
           } else {
@@ -1726,6 +1764,20 @@ export default {
     )
   },
   watch: {
+    permissionCode(newValue, oldValue) {
+      if (newValue === oldValue) return
+      console.log('[SUPA][diag] watch permissionCode', {
+        old: oldValue,
+        new: newValue
+      })
+    },
+    permissionText(newValue, oldValue) {
+      if (newValue === oldValue) return
+      console.log('[SUPA][diag] watch permissionText', {
+        old: oldValue,
+        new: newValue
+      })
+    },
     pauseAndSendBtn: {
       handler(newData, oldData) {
         if (newData.countAll === newData.countSuccess + newData.countFail && newData.countAll > 0) {
@@ -1812,25 +1864,52 @@ export default {
     this._storageChangeHandler = (changes, area) => {
       if (area !== 'local') return
       let touched = false
+      const relevant = {}
       if (Object.prototype.hasOwnProperty.call(changes, 'paid_mark')) {
         this.paidMark = !!changes.paid_mark.newValue
         touched = true
+        relevant.paid_mark = {
+          oldValue: changes.paid_mark.oldValue,
+          newValue: changes.paid_mark.newValue
+        }
       }
       const actChanged = Object.prototype.hasOwnProperty.call(changes, 'myapp_activation')
       const licChanged = Object.prototype.hasOwnProperty.call(changes, 'myapp_license')
       if (actChanged) {
         this.myappActivation = changes.myapp_activation?.newValue === true
         touched = true
+        relevant.myapp_activation = {
+          oldValue: changes.myapp_activation?.oldValue,
+          newValue: changes.myapp_activation?.newValue
+        }
       }
       if (licChanged) {
         this.myappLicense = this.normalizeStatusObject(changes.myapp_license?.newValue)
         touched = true
+        relevant.myapp_license = {
+          oldValue: changes.myapp_license?.oldValue,
+          newValue: changes.myapp_license?.newValue
+        }
       }
       if (Object.prototype.hasOwnProperty.call(changes, 'permissionInfo')) {
         this.permissionInfo = this.normalizeStatusObject(changes.permissionInfo.newValue)
         touched = true
+        relevant.permissionInfo = {
+          oldValue: changes.permissionInfo.oldValue,
+          newValue: changes.permissionInfo.newValue
+        }
       }
       if (!touched) return
+      console.log('[SUPA][diag] storage.onChanged', {
+        area,
+        relevant,
+        after: {
+          paid_mark: this.paidMark,
+          myapp_activation: this.myappActivation,
+          myapp_license: this.myappLicense,
+          permissionInfo: this.permissionInfo
+        }
+      })
       if (
         this.isSupabaseActive(
           this.paidMark,
@@ -1845,6 +1924,10 @@ export default {
       } else if (this.permissionCode === 'supabase_pro') {
         this.permissionCode = ''
       }
+      console.log('[SUPA][diag] storage.onChanged → permission state', {
+        permissionCode: this.permissionCode,
+        permissionText: this.permissionText
+      })
     }
     chrome?.storage?.onChanged?.addListener?.(this._storageChangeHandler)
     this.$bridge.onMessage(CONTENT_TO_POP_IS_SHOW_NO_ACTIVE, ({ data }) => {

@@ -160,9 +160,14 @@ export default {
 
           await chrome.storage?.local?.set?.({
             [STORAGE_LICENSE_KEY]: licensePayload, // ex.: myapp_license
-            [STORAGE_ACTIVATION_FLAG]: true, // ex.: myapp_activation
-            paid_mark: true, // flag lida pelo header para exibir "Pro"
-            permissionInfo: legacyPermission // objeto mínimo p/ telas legadas
+            [STORAGE_ACTIVATION_FLAG]: true,       // ex.: myapp_activation
+            paid_mark: true,                        // usado pelo header para exibir "Pro"
+            permissionInfo: legacyPermission        // objeto mínimo p/ telas legadas
+          })
+          console.log('[SUPA][diag] redeem → payload salvo', {
+            saved: licensePayload,
+            myapp_activation: true,
+            paid_mark: true
           })
 
           // limpar bandeiras de "sem assinatura"
@@ -173,10 +178,17 @@ export default {
             'actionCodeList'
           ])
 
-          // notificar UI e fechar
-          // fallback para fluxo Supabase: força header/gates a virarem Pro
-          console.log('[SUPA] redeem ok → flip to Pro', { license: licensePayload })
-          this.$emit('changePermissionCode', 'supabase_pro', null, whatsappNumber)
+          // notificar UI e fechar — emitir código de permissão com fallback
+          console.log('[SUPA][diag] redeem ok → flip to Pro', { license: licensePayload })
+          const emittedCode = legacyPermission?.plink_id || 'supabase_pro'
+          const emittedTxn = legacyPermission?.transaction_id || null
+          console.log('[SUPA][diag] emit changePermissionCode', {
+            emittedCode,
+            transaction_id: emittedTxn,
+            whatsappNumber
+          })
+          this.$emit('changePermissionCode', emittedCode, emittedTxn, whatsappNumber)
+          console.log('[SUPA][diag] changePermissionCode dispatched')
 
           this.languageVal = ''
           this.$message?.success?.('Ativado')
