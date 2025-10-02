@@ -681,7 +681,8 @@ export default {
         typeof permissionStatusRaw === 'string'
           ? permissionStatusRaw.toLowerCase()
           : String(permissionStatusRaw ?? '').toLowerCase()
-      const result =
+      const result = legacy || supabaseActive
+      return result
         paidMark === true ||
         myappActivation === true ||
         licenseStatus === 'active' ||
@@ -1509,14 +1510,14 @@ export default {
             _This.myappLicense,
             _This.permissionInfo
           )
-          console.log('[SUPA][diag] bootstrap snapshot', {
-            paid_mark: _This.paidMark,
-            myapp_activation: _This.myappActivation,
-            myapp_license: _This.myappLicense,
-            permissionInfo: _This.permissionInfo,
-            permissionCode: _This.permissionCode,
-            permissionText: _This.permissionText
-          })
+      console.log('[SUPA][diag] bootstrap snapshot', {
+        paid_mark: this.paidMark,
+        myapp_activation: this.myappActivation,
+        myapp_license: this.myappLicense,
+        permissionInfo: this.permissionInfo,
+        permissionCode: this.permissionCode,
+        permissionText: this.permissionText
+      })
           if (supabaseActive) {
             _This.permissionCode = 'supabase_pro'
           } else {

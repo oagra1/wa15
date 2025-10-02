@@ -249,6 +249,7 @@ export default {
         return value === undefined || value === null || value === '-'
       })
       console.log('[SUPA][diag] UserProfile populateFromLicense', { license, missing })
+
       if (!license) {
         this.currentPlan = '-'
         this.joinedDate = '-'
@@ -364,56 +365,15 @@ export default {
 </script>
 
 <style scoped>
-.dialogBody {
-  width: 100%;
-}
-
-.dialogBody tr {
-  width: 100%;
-  line-height: 20px;
-}
-
-table {
-  width: 100%;
-}
-
-.el-dialog.el-dialog--center.userProfile > .el-dialog__footer {
-  margin: 6px auto 17px;
-  padding-top: 0 !important;
-}
-
-.tableHead {
-  font-weight: bold;
-  width: 40%;
-}
-
-.tableContent {
-  width: 60%;
-  font-size: 12px;
-}
-.tableContent >>> .el-input > input {
-  height: 20px;
-}
-
-::v-deep .el-dialog__header {
-  background-color: #37b64a;
-  font-size: 20px;
-  font-weight: bold;
-}
-
-.el-button--info,
-.el-button--info:hover {
-  padding: 3px 6px !important;
-  border-radius: 4px;
-  text-align: center;
-  align-items: center;
-  justify-content: center;
-}
-
-.subscriptState {
-  margin-right: 20px;
-}
-.el-input {
-  width: 70%;
-}
+.dialogBody { width: 100%; }
+.dialogBody tr { width: 100%; line-height: 20px; }
+table { width: 100%; }
+.el-dialog.el-dialog--center.userProfile > .el-dialog__footer { margin: 6px auto 17px; padding-top: 0 !important; }
+.tableHead { font-weight: bold; width: 40%; }
+.tableContent { width: 60%; font-size: 12px; }
+.tableContent >>> .el-input > input { height: 20px; }
+::v-deep .el-dialog__header { background-color: #37b64a; font-size: 20px; font-weight: bold; }
+.el-button--info, .el-button--info:hover { padding: 3px 6px !important; border-radius: 4px; text-align: center; align-items: center; justify-content: center; }
+.subscriptState { margin-right: 20px; }
+.el-input { width: 70%; }
 </style>
